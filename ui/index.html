@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generador de Tarjetas Incluyentes (Rust + Tauri)</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header Navbar -->
+    <header class="app-header">
+      <div class="brand">
+        <img src="SCIncluyentes_logo.webp" alt="SIA ONU Logo" class="brand-logo" />
+        <div class="brand-text">
+          <h1>Generador de Tarjetas Incluyentes</h1>
+        </div>
+      </div>
+      <nav class="nav-tabs">
+        <button class="tab-btn active" data-tab="tab-plantillas">1. Plantillas</button>
+        <button class="tab-btn" data-tab="tab-datos">2. Datos Excel</button>
+        <button class="tab-btn" data-tab="tab-mapeo">3. Mapeo</button>
+        <button class="tab-btn" data-tab="tab-diseno">4. Diseño Drag & Drop</button>
+        <button class="tab-btn" data-tab="tab-generar">5. Generar</button>
+      </nav>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      <!-- TAB 1: PLANTILLAS Y CONFIGURACION -->
+      <section id="tab-plantillas" class="tab-content active">
+        <div class="panel-grid">
+          <div class="card-panel">
+            <h2>Configuración de Credencial</h2>
+            <div class="form-group">
+              <label>Tamaño Estándar (mm):</label>
+              <select id="tamano-mm">
+                <option value="80">80 mm (Credencial Estándar ID)</option>
+                <option value="85.6" selected>85.6 mm (CR-80 Tarjeta Crédito)</option>
+                <option value="90">90 mm (Grande)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Orientación:</label>
+              <div class="radio-group">
+                <label><input type="radio" name="orientacion" value="horizontal" checked> Horizontal</label>
+                <label><input type="radio" name="orientacion" value="vertical"> Vertical</label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Resolución de Impresión (DPI):</label>
+              <select id="dpi-select">
+                <option value="150">150 DPI (Borrador)</option>
+                <option value="200">200 DPI (Media)</option>
+                <option value="300" selected>300 DPI (Calidad Profesional Imprenta)</option>
+              </select>
+            </div>
+
+            <div class="resolution-badge">
+              <span>Resolución Calculada:</span>
+              <strong id="resolution-text">1011 x 637 px</strong>
+            </div>
+          </div>
+
+          <div class="card-panel">
+            <h2>Cargar Fondo o Crear Plantilla en Blanco</h2>
+            
+            <div class="template-upload-grid">
+              <div class="upload-box">
+                <h3>Lado Delantero</h3>
+                <button class="btn btn-secondary" onclick="seleccionarImagenDelantero()">Seleccionar Imagen Delantera</button>
+                <div class="preview-box" id="preview-delantero-box">Sin imagen</div>
+              </div>
+
+              <div class="upload-box">
+                <h3>Lado Trasero</h3>
+                <button class="btn btn-secondary" onclick="seleccionarImagenTrasero()">Seleccionar Imagen Trasera</button>
+                <div class="preview-box" id="preview-trasero-box">Sin imagen</div>
+              </div>
+            </div>
+
+            <hr class="divider" />
+
+            <div class="blank-template-section">
+              <h3>O generar Plantilla en Blanco</h3>
+              <div class="inline-form">
+                <label>Color de fondo:</label>
+                <input type="color" id="blank-color" value="#ffffff" />
+                <button class="btn btn-primary" id="btn-crear-blanco">Crear Plantillas en Blanco</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-panel full-width" style="margin-top: 10px;">
+            <h2>Perfiles de Configuración</h2>
+            <div class="profile-search-bar" style="margin-bottom: 14px;">
+              <input type="text" id="tab1-profile-search" placeholder="Buscar perfil por nombre..." oninput="filtrarPerfilesTab1(this.value)" />
+            </div>
+            <div class="profiles-list" id="tab1-profiles-list-container">
+              <p class="subtle-text">Cargando perfiles...</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: CARGA DE DATOS EXCEL -->
+      <section id="tab-datos" class="tab-content">
+        <div class="card-panel full-width">
+          <div class="toolbar">
+            <h2>Datos Importados desde Excel</h2>
+            <div class="actions">
+              <button class="btn btn-primary" id="btn-import-excel" onclick="seleccionarArchivoExcel()">Importar Archivo Excel</button>
+              <span id="excel-status" class="status-badge">Sin datos cargados</span>
+            </div>
+          </div>
+
+          <div class="table-container" id="excel-table-container">
+            <div class="empty-state">No se ha cargado ningún archivo Excel. Haz clic en "Importar Archivo Excel".</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: MAPEO DE CAMPOS -->
+      <section id="tab-mapeo" class="tab-content">
+        <div class="card-panel full-width">
+          <h2>Mapear Columnas de Excel a Campos de la Credencial</h2>
+          <p class="help-text">Asigna las columnas de tu Excel a los campos que aparecerán impresos en la tarjeta.</p>
+          
+          <div class="mapping-grid" id="mapping-container">
+            <div class="empty-state">Primero debes importar un archivo Excel en la pestaña "Datos Excel".</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: DISENO VISUAL DRAG & DROP -->
+      <section id="tab-diseno" class="tab-content">
+        <div class="editor-layout">
+          <!-- Left Control Sidebar -->
+          <div class="editor-sidebar">
+            <div class="panel-section">
+              <h3>Cara Activa</h3>
+              <div class="radio-group-tabs">
+                <button class="side-btn active" id="btn-cara-delantero">Delantero</button>
+                <button class="side-btn" id="btn-cara-trasero">Trasero</button>
+              </div>
+            </div>
+
+            <div class="panel-section">
+              <h3>Agregar Elementos</h3>
+              <div class="add-buttons">
+                <button class="btn btn-sm btn-outline" id="btn-add-text-field">Campo Texto</button>
+                <button class="btn btn-sm btn-outline" id="btn-add-photo-area">Área de Foto</button>
+                <button class="btn btn-sm btn-outline" id="btn-add-qr-area">Área de QR</button>
+              </div>
+            </div>
+
+            <div class="panel-section">
+              <h3>Propiedades del Campo</h3>
+              <div id="field-properties-form">
+                <p class="subtle-text">Selecciona un elemento en el lienzo para editar sus propiedades.</p>
+              </div>
+            </div>
+
+            <div class="panel-section">
+              <h3>Elementos en Lienzo</h3>
+              <ul id="canvas-elements-list" class="elements-list"></ul>
+            </div>
+          </div>
+
+          <!-- Canvas Workspace -->
+          <div class="editor-canvas-wrapper">
+            <div class="canvas-toolbar">
+              <span id="canvas-info">Lado: Delantero | Zoom: 100%</span>
+              <button class="btn btn-xs" id="btn-reset-view">Restablecer Vista</button>
+            </div>
+            <div class="canvas-container" id="canvas-container">
+              <canvas id="card-canvas"></canvas>
+              <div class="zoom-controls">
+                <button class="btn btn-xs btn-secondary" id="btn-zoom-out" title="Disminuir Zoom">-</button>
+                <span id="zoom-level-badge">100%</span>
+                <button class="btn btn-xs btn-secondary" id="btn-zoom-in" title="Aumentar Zoom">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: GENERAR TARJETAS -->
+      <section id="tab-generar" class="tab-content">
+        <div class="panel-grid">
+          <div class="card-panel">
+            <h2>Generación Masiva</h2>
+
+            <div class="form-group">
+              <label>Carpeta de Salida:</label>
+              <div class="input-with-button">
+                <input type="text" id="output-dir-path" value="tarjetas_generadas" readonly />
+                <button class="btn btn-secondary" id="btn-select-output-dir">Cambiar Carpeta</button>
+              </div>
+            </div>
+
+            <hr class="divider" />
+
+            <div class="generate-actions">
+              <button class="btn btn-success btn-lg" id="btn-generar-todas">Generar Todas las Tarjetas</button>
+              <button class="btn btn-primary btn-lg" id="btn-exportar-pdf">Exportar PDF para Imprenta</button>
+            </div>
+
+            <div class="progress-section" id="progress-section" style="display: none;">
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progress-bar-fill"></div>
+              </div>
+              <span id="progress-text">Procesando...</span>
+            </div>
+          </div>
+
+          <div class="card-panel">
+            <h2>Perfiles de Configuración</h2>
+            <div class="profile-actions">
+              <input type="text" id="profile-name-input" placeholder="Nombre del perfil..." />
+              <button class="btn btn-outline" id="btn-guardar-perfil">Guardar Perfil</button>
+            </div>
+
+            <div class="profiles-list" id="profiles-list-container">
+              <p class="subtle-text">No hay perfiles guardados.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer Status Bar -->
+    <footer class="app-footer">
+      <span id="footer-status">Listo</span>
+      <span class="app-version">SCIncluyentes v1.0.0</span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
