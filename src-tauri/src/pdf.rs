@@ -4,6 +4,77 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
 
+pub fn generate_single_card_pdf(
+    front_img_path: Option<&str>,
+    back_img_path: Option<&str>,
+    output_pdf_path: &str,
+    width_mm: f64,
+    height_mm: f64,
+) -> Result<(), String> {
+    let card_w = Mm(width_mm as f32);
+    let card_h = Mm(height_mm as f32);
+
+    let (doc, page1, layer1) = PdfDocument::new("Credencial Incluyente", card_w, card_h, "Front Layer");
+
+    // 1. Front page
+    // 1. Front page
+    if let Some(front_path) = front_img_path {
+        if Path::new(front_path).exists() {
+            let current_layer = doc.get_page(page1).get_layer(layer1);
+            if let Ok(dyn_img) = open(front_path) {
+                let (w, h) = (dyn_img.width() as f32, dyn_img.height() as f32);
+                let px_per_mm = 300.0 / 25.4;
+                let mm_w = w / px_per_mm;
+                let mm_h = h / px_per_mm;
+                let pdf_img = Image::from_dynamic_image(&dyn_img);
+                pdf_img.add_to_layer(
+                    current_layer,
+                    ImageTransform {
+                        translate_x: Some(Mm(0.0)),
+                        translate_y: Some(Mm(0.0)),
+                        rotate: None,
+                        scale_x: Some(card_w.0 / mm_w),
+                        scale_y: Some(card_h.0 / mm_h),
+                        dpi: Some(300.0),
+                    },
+                );
+            }
+        }
+    }
+
+    // 2. Back page
+    if let Some(back_path) = back_img_path {
+        if Path::new(back_path).exists() {
+            let (page2, layer2) = doc.add_page(card_w, card_h, "Back Layer");
+            let back_layer = doc.get_page(page2).get_layer(layer2);
+            if let Ok(dyn_img) = open(back_path) {
+                let (w, h) = (dyn_img.width() as f32, dyn_img.height() as f32);
+                let px_per_mm = 300.0 / 25.4;
+                let mm_w = w / px_per_mm;
+                let mm_h = h / px_per_mm;
+                let pdf_img = Image::from_dynamic_image(&dyn_img);
+                pdf_img.add_to_layer(
+                    back_layer,
+                    ImageTransform {
+                        translate_x: Some(Mm(0.0)),
+                        translate_y: Some(Mm(0.0)),
+                        rotate: None,
+                        scale_x: Some(card_w.0 / mm_w),
+                        scale_y: Some(card_h.0 / mm_h),
+                        dpi: Some(300.0),
+                    },
+                );
+            }
+        }
+    }
+
+    let file = File::create(output_pdf_path).map_err(|e| format!("Error creando archivo PDF: {}", e))?;
+    let mut writer = BufWriter::new(file);
+    doc.save(&mut writer).map_err(|e| format!("Error guardando archivo PDF: {}", e))?;
+
+    Ok(())
+}
+
 pub fn generate_cards_pdf(
     image_paths: Vec<String>,
     output_pdf_path: &str,
@@ -47,7 +118,10 @@ pub fn generate_cards_pdf(
         let y = Mm(297.0) - margin_y - Mm((row + 1) as f32 * (card_h.0 + spacing_y.0));
 
         if let Ok(dyn_img) = open(path_str) {
-            let (w, h) = (dyn_img.width(), dyn_img.height());
+            let (w, h) = (dyn_img.width() as f32, dyn_img.height() as f32);
+            let px_per_mm = 300.0 / 25.4;
+            let mm_w = w / px_per_mm;
+            let mm_h = h / px_per_mm;
             let pdf_img = Image::from_dynamic_image(&dyn_img);
             
             pdf_img.add_to_layer(
@@ -56,8 +130,8 @@ pub fn generate_cards_pdf(
                     translate_x: Some(x),
                     translate_y: Some(y),
                     rotate: None,
-                    scale_x: Some(card_w.0 / (w as f32 / 3.7795)),
-                    scale_y: Some(card_h.0 / (h as f32 / 3.7795)),
+                    scale_x: Some(card_w.0 / mm_w),
+                    scale_y: Some(card_h.0 / mm_h),
                     dpi: Some(300.0),
                 },
             );

@@ -109,10 +109,15 @@ async fn cmd_create_blank_template(
     width: u32,
     height: u32,
     color_hex: String,
-    save_path: String,
-) -> Result<(), String> {
-    println!("[DEBUG Rust] Creando plantilla en blanco de {}x{}px color {} en {}", width, height, color_hex, save_path);
-    create_blank_template(width, height, &color_hex, &save_path)
+    filename: String,
+) -> Result<String, String> {
+    let temp_dir = std::env::temp_dir().join("sc_incluyentes");
+    let _ = std::fs::create_dir_all(&temp_dir);
+    let full_path = temp_dir.join(&filename).to_string_lossy().to_string();
+
+    println!("[DEBUG Rust] Creando plantilla en blanco de {}x{}px color {} en {}", width, height, color_hex, full_path);
+    create_blank_template(width, height, &color_hex, &full_path)?;
+    Ok(full_path)
 }
 
 #[tauri::command]
@@ -164,6 +169,54 @@ async fn cmd_generate_qr_preview(content: String, width: u32, height: u32) -> Re
     generate_qr_base64(&content, width, height)
 }
 
+#[tauri::command]
+async fn cmd_select_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    println!("[DEBUG Rust] Invocando selector nativo de carpetas...");
+    let folder_path = app
+        .dialog()
+        .file()
+        .blocking_pick_folder();
+
+    match folder_path {
+        Some(path) => {
+            let p_str = path.into_path().map_err(|e| e.to_string())?.to_string_lossy().to_string();
+            println!("[DEBUG Rust] Carpeta seleccionada con éxito: {}", p_str);
+            Ok(Some(p_str))
+        }
+        None => {
+            println!("[DEBUG Rust] Selección de carpeta cancelada por el usuario.");
+            Ok(None)
+        }
+    }
+}
+
+#[tauri::command]
+async fn cmd_get_photo_base64(folder: String, photo_id: String) -> Result<Option<String>, String> {
+    use base64::engine::general_purpose::STANDARD;
+    use base64::Engine;
+    use std::path::Path;
+
+    if folder.is_empty() || photo_id.is_empty() {
+        return Ok(None);
+    }
+
+    let exts = [".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG", ".webp", ".WEBP"];
+    for ext in &exts {
+        let candidate = Path::new(&folder).join(format!("{}{}", photo_id, ext));
+        if candidate.exists() {
+            if let Ok(bytes) = std::fs::read(&candidate) {
+                let mime = match ext.to_lowercase().as_str() {
+                    ".jpg" | ".jpeg" => "image/jpeg",
+                    ".webp" => "image/webp",
+                    _ => "image/png",
+                };
+                return Ok(Some(format!("data:{};base64,{}", mime, STANDARD.encode(&bytes))));
+            }
+        }
+    }
+    Ok(None)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     println!("[DEBUG Rust] Inicializando aplicación SCIncluyentes en Rust...");
@@ -177,6 +230,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             cmd_select_excel_file,
             cmd_select_image_file,
+            cmd_select_folder,
             cmd_read_file_base64,
             cmd_read_excel,
             cmd_create_blank_template,
@@ -186,6 +240,7 @@ pub fn run() {
             cmd_get_profiles,
             cmd_delete_profile,
             cmd_generate_qr_preview,
+            cmd_get_photo_base64,
         ])
         .run(tauri::generate_context!())
         .expect("Error al ejecutar la aplicación Tauri");

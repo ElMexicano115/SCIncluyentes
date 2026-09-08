@@ -1,7 +1,7 @@
 [package]
-name = "sc-incluyentes"
+name = "sistema-de-credenciales-incluyentes"
 version = "0.1.0"
-description = "Generador de Tarjetas Incluyentes"
+description = "Sistema de Credenciales Incluyentes"
 authors = ["you"]
 license = ""
 repository = ""

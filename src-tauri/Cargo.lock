@@ -3314,30 +3314,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sc-incluyentes"
-version = "0.1.0"
-dependencies = [
- "ab_glyph",
- "base64 0.22.1",
- "calamine",
- "image 0.24.9",
- "imageproc",
- "log",
- "printpdf",
- "qrcode",
- "rayon",
- "rusqlite",
- "rusttype",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-log",
-]
-
-[[package]]
 name = "schemars"
 version = "0.8.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3623,6 +3599,30 @@ name = "siphasher"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ee5873ec9cce0195efcb7a4e9507a04cd49aec9c83d0389df45b1ef7ba2e649"
+
+[[package]]
+name = "sistema-de-credenciales-incluyentes"
+version = "0.1.0"
+dependencies = [
+ "ab_glyph",
+ "base64 0.22.1",
+ "calamine",
+ "image 0.24.9",
+ "imageproc",
+ "log",
+ "printpdf",
+ "qrcode",
+ "rayon",
+ "rusqlite",
+ "rusttype",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-log",
+]
 
 [[package]]
 name = "slab"

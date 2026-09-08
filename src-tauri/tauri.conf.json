@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "sc-incluyentes",
+  "productName": "Credenciales Incluyentes",
   "version": "0.1.0",
-  "identifier": "com.scincluyentes.app",
+  "identifier": "com.sistemacredencialesincluyentes.app",
   "build": {
     "frontendDist": "../ui"
   },
@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Generador de Tarjetas Incluyentes",
+        "title": "Sistema de Credenciales Incluyentes",
         "width": 1300,
         "height": 850,
         "resizable": true,

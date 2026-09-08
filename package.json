@@ -1,6 +1,6 @@
 {
-  "name": "sc-incluyentes",
-  "version": "1.0.0",
+  "name": "sistema-de-credenciales-incluyentes",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "tauri dev",

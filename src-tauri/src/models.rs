@@ -36,6 +36,12 @@ pub struct FieldPosition {
     pub font_size: u32,
     pub color: String, // hex, e.g., "#000000" or color name
     pub cara: String,  // "delantero" | "trasero"
+    #[serde(default)]
+    pub width: Option<u32>,
+    #[serde(default)]
+    pub texto_personalizado: Option<String>,
+    #[serde(default)]
+    pub es_personalizado: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,6 +54,10 @@ pub struct PhotoArea {
     pub height: u32,
     pub campo_id: String,      // columna o id con el nombre de la foto (sin extensión)
     pub carpeta_fotos: String, // ruta a carpeta con imágenes
+    #[serde(default)]
+    pub foto_especifica: Option<String>,
+    #[serde(default)]
+    pub es_especifica: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,6 +70,10 @@ pub struct QrArea {
     pub height: u32,
     pub campo_id: String, // columna del Excel
     pub base_url: String, // prefijo opcional para la URL
+    #[serde(default)]
+    pub qr_personalizado: Option<String>,
+    #[serde(default)]
+    pub es_personalizado: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
