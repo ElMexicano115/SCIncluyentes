@@ -91,9 +91,9 @@ pub fn render_single_card(
     let target_w = config.width_px;
     let target_h = config.height_px;
 
-    // 1. Create base RGBA white canvas for front and back
-    let mut front_canvas = DynamicImage::ImageRgba8(ImageBuffer::from_pixel(target_w, target_h, Rgba([255, 255, 255, 255])));
-    let mut back_canvas = DynamicImage::ImageRgba8(ImageBuffer::from_pixel(target_w, target_h, Rgba([255, 255, 255, 255])));
+    // 1. Create base RGBA canvas (#101411) for front and back
+    let mut front_canvas = DynamicImage::ImageRgba8(ImageBuffer::from_pixel(target_w, target_h, Rgba([16, 20, 17, 255])));
+    let mut back_canvas = DynamicImage::ImageRgba8(ImageBuffer::from_pixel(target_w, target_h, Rgba([16, 20, 17, 255])));
 
     let render_photo = |area: &crate::models::PhotoArea| -> Option<(DynamicImage, u32, u32, String)> {
         let photo_path: Option<PathBuf> = if area.es_especifica.unwrap_or(false) && area.foto_especifica.is_some() {

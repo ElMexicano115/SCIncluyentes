@@ -417,7 +417,7 @@ tr:hover {
 }
 
 .canvas-container {
-  background: #f1f5f9;
+  background: #101411;
   border: 1px solid var(--panel-border);
   border-top: none;
   border-radius: 0 0 var(--radius) var(--radius);
@@ -431,8 +431,8 @@ tr:hover {
 }
 
 canvas {
-  background: #ffffff;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  background: #101411;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
   cursor: crosshair;
 }
 

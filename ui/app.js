@@ -1007,8 +1007,8 @@ function renderCanvas(updateForm = true) {
   if (cvs.width !== state.config.width_px) cvs.width = state.config.width_px;
   if (cvs.height !== state.config.height_px) cvs.height = state.config.height_px;
 
-  // 1. Clear white background
-  ctx.fillStyle = '#ffffff';
+  // 1. Clear background (#101411)
+  ctx.fillStyle = '#101411';
   ctx.fillRect(0, 0, cvs.width, cvs.height);
 
   // 2. Layer 1: Draw photos positioned behind background
@@ -1503,8 +1503,8 @@ window.renderPreviewCanvasTab5 = async function() {
   cvs.width = state.config.width_px;
   cvs.height = state.config.height_px;
 
-  // 1. Clear white background
-  ctx.fillStyle = '#ffffff';
+  // 1. Clear background (#101411)
+  ctx.fillStyle = '#101411';
   ctx.fillRect(0, 0, cvs.width, cvs.height);
 
   const cara = state.caraActivaTab5 || 'delantero';
