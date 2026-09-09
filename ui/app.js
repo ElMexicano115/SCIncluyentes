@@ -921,7 +921,7 @@ function drawCanvasOverlay(ctx) {
     if (field.cara === state.caraActiva) {
       const displayText = field.es_personalizado && field.texto_personalizado ? field.texto_personalizado : field.etiqueta;
       ctx.fillStyle = field.color || '#000000';
-      ctx.font = `${field.font_size}px Inter, sans-serif`;
+      ctx.font = `${field.font_size}px 'DejaVu Sans', Inter, sans-serif`;
       ctx.textBaseline = 'top';
 
       const maxWidth = field.width || 300;
@@ -1491,8 +1491,14 @@ window.renderPreviewCanvasTab5 = async function() {
   const bgPath = cara === 'delantero' ? state.archivo_delantero : state.archivo_trasero;
   const bgImg = cara === 'delantero' ? bgImageCache.delanteroImg : bgImageCache.traseroImg;
 
-  if (bgPath && bgImg && bgImg.complete && bgImg.naturalWidth !== 0) {
-    ctx.drawImage(bgImg, 0, 0, cvs.width, cvs.height);
+  if (bgPath) {
+    const cachedPath = cara === 'delantero' ? bgImageCache.delanteroPath : bgImageCache.traseroPath;
+    if (cachedPath !== bgPath) {
+      preloadBackgroundImage(cara, bgPath);
+    }
+    if (bgImg && bgImg.complete && bgImg.naturalWidth !== 0) {
+      ctx.drawImage(bgImg, 0, 0, cvs.width, cvs.height);
+    }
   }
 
   // Determine current selected row data
@@ -1510,7 +1516,7 @@ window.renderPreviewCanvasTab5 = async function() {
     }
   }
 
-  // 1. Draw Photos (Real photos if available, else placeholder)
+  // 1. Draw Photos (Real photos if available; do not draw fallback placeholders in Tab 5 real preview)
   const photos = Array.isArray(state.posiciones_fotos) ? state.posiciones_fotos : [];
   for (const photo of photos) {
     if (photo.cara === cara) {
@@ -1546,24 +1552,12 @@ window.renderPreviewCanvasTab5 = async function() {
           pImg.onload = () => window.renderPreviewCanvasTab5();
         } else if (pImg.complete && pImg.naturalWidth !== 0) {
           ctx.drawImage(pImg, photo.x, photo.y, photo.width, photo.height);
-          continue;
         }
       }
-
-      // Fallback placeholder
-      ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 1;
-      ctx.fillRect(photo.x, photo.y, photo.width, photo.height);
-      ctx.strokeRect(photo.x, photo.y, photo.width, photo.height);
-      ctx.fillStyle = '#3b82f6';
-      ctx.font = '14px Inter, sans-serif';
-      ctx.textBaseline = 'top';
-      ctx.fillText('[Área Foto]', photo.x + 8, photo.y + 8);
     }
   }
 
-  // 2. Draw QRs (Real QRs if available, else placeholder)
+  // 2. Draw QRs (Real QRs if available; do not draw fallback placeholders in Tab 5 real preview)
   const qrs = Array.isArray(state.qr_areas) ? state.qr_areas : [];
   for (const qr of qrs) {
     if (qr.cara === cara) {
@@ -1598,25 +1592,13 @@ window.renderPreviewCanvasTab5 = async function() {
             qImg.onload = () => window.renderPreviewCanvasTab5();
           } else if (qImg.complete && qImg.naturalWidth !== 0) {
             ctx.drawImage(qImg, qr.x, qr.y, qr.width, qr.height);
-            continue;
           }
         }
       }
-
-      // Fallback placeholder
-      ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
-      ctx.strokeStyle = '#10b981';
-      ctx.lineWidth = 1;
-      ctx.fillRect(qr.x, qr.y, qr.width, qr.height);
-      ctx.strokeRect(qr.x, qr.y, qr.width, qr.height);
-      ctx.fillStyle = '#10b981';
-      ctx.font = '14px Inter, sans-serif';
-      ctx.textBaseline = 'top';
-      ctx.fillText('[Código QR]', qr.x + 8, qr.y + 8);
     }
   }
 
-  // 3. Draw Mapped & Wrapped Text Fields
+  // 3. Draw Mapped & Wrapped Text Fields using matching DejaVu Sans font
   Object.keys(state.posiciones_campos || {}).forEach(key => {
     const field = state.posiciones_campos[key];
     if (field.cara === cara) {
@@ -1625,17 +1607,19 @@ window.renderPreviewCanvasTab5 = async function() {
         displayText = field.texto_personalizado;
       } else {
         const col = state.mapeo_campos[key];
-        if (col && rowData[col]) {
+        if (col && rowData[col] !== undefined && rowData[col] !== null && rowData[col] !== '') {
           displayText = rowData[col];
-        } else if (rowData[key]) {
+        } else if (rowData[key] !== undefined && rowData[key] !== null && rowData[key] !== '') {
           displayText = rowData[key];
         } else {
           displayText = field.etiqueta;
         }
       }
 
+      if (!displayText) return;
+
       ctx.fillStyle = field.color || '#000000';
-      ctx.font = `${field.font_size}px Inter, sans-serif`;
+      ctx.font = `${field.font_size}px 'DejaVu Sans', Inter, sans-serif`;
       ctx.textBaseline = 'top';
 
       const maxWidth = field.width || 300;
@@ -1954,11 +1938,27 @@ window.eliminarPerfilConfig = async function(nombre) {
   }
 };
 
+async function cargarFuenteDejaVu() {
+  try {
+    if (typeof FontFace !== 'undefined') {
+      const font = new FontFace('DejaVu Sans', 'url(fonts/DejaVuSans.ttf)');
+      const loadedFont = await font.load();
+      document.fonts.add(loadedFont);
+      console.log("[DEBUG] Fuente 'DejaVu Sans' cargada dinámicamente.");
+      renderCanvas();
+      renderPreviewCanvasTab5();
+    }
+  } catch (err) {
+    console.warn("[DEBUG] No se pudo cargar dinámicamente DejaVu Sans:", err);
+  }
+}
+
 // Hook btn-guardar-perfil listener
 document.addEventListener('DOMContentLoaded', () => {
   const btnSave = document.getElementById('btn-guardar-perfil');
   if (btnSave) {
     btnSave.addEventListener('click', window.guardarPerfilActual);
   }
+  cargarFuenteDejaVu();
   setTimeout(cargarPerfilesImpresion, 100);
 });

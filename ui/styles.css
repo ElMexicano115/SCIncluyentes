@@ -1,3 +1,8 @@
+@font-face {
+  font-family: 'DejaVu Sans';
+  src: url('fonts/DejaVuSans.ttf') format('truetype');
+}
+
 :root {
   --bg-light: #f8fafc;
   --panel-bg: #ffffff;

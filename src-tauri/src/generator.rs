@@ -208,7 +208,7 @@ pub fn render_single_card(
         }
 
         let font_size = props.font_size as f32;
-        let max_width = props.width.unwrap_or(250);
+        let max_width = props.width.unwrap_or(300);
         let line_height = (font_size * 1.15) as i32;
 
         let lines = wrap_text_lines(&font, &val_to_draw, font_size, max_width);
