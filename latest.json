@@ -1,0 +1,11 @@
+{
+  "version": "0.2.0",
+  "notes": "Guardado de credenciales PDF forzado en orientación vertical para mejor compatibilidad con impresoras de tarjetas.",
+  "pub_date": "2026-09-09T17:45:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "FIRMA_GENERADA_POR_GITHUB_ACTIONS",
+      "url": "https://github.com/ElMexicano115/SCIncluyentes/releases/download/v0.2.0/Credenciales.Incluyentes_0.2.0_x64-setup.nsis.zip"
+    }
+  }
+}

@@ -11,22 +11,32 @@ pub fn generate_single_card_pdf(
     width_mm: f64,
     height_mm: f64,
 ) -> Result<(), String> {
-    let card_w = Mm(width_mm as f32);
-    let card_h = Mm(height_mm as f32);
+    // Garantizar que la página del PDF SIEMPRE sea vertical (Portrait) para mejor compatibilidad con impresoras
+    let page_w_mm = width_mm.min(height_mm);
+    let page_h_mm = width_mm.max(height_mm);
+
+    let card_w = Mm(page_w_mm as f32);
+    let card_h = Mm(page_h_mm as f32);
 
     let (doc, page1, layer1) = PdfDocument::new("Credencial Incluyente", card_w, card_h, "Front Layer");
 
-    // 1. Front page
     // 1. Front page
     if let Some(front_path) = front_img_path {
         if Path::new(front_path).exists() {
             let current_layer = doc.get_page(page1).get_layer(layer1);
             if let Ok(dyn_img) = open(front_path) {
-                let (w, h) = (dyn_img.width() as f32, dyn_img.height() as f32);
+                // Si la imagen de la credencial es horizontal, la rotamos 90° para encajar verticalmente
+                let img_to_use = if dyn_img.width() > dyn_img.height() {
+                    dyn_img.rotate90()
+                } else {
+                    dyn_img
+                };
+
+                let (w, h) = (img_to_use.width() as f32, img_to_use.height() as f32);
                 let px_per_mm = 300.0 / 25.4;
                 let mm_w = w / px_per_mm;
                 let mm_h = h / px_per_mm;
-                let pdf_img = Image::from_dynamic_image(&dyn_img);
+                let pdf_img = Image::from_dynamic_image(&img_to_use);
                 pdf_img.add_to_layer(
                     current_layer,
                     ImageTransform {
@@ -48,11 +58,18 @@ pub fn generate_single_card_pdf(
             let (page2, layer2) = doc.add_page(card_w, card_h, "Back Layer");
             let back_layer = doc.get_page(page2).get_layer(layer2);
             if let Ok(dyn_img) = open(back_path) {
-                let (w, h) = (dyn_img.width() as f32, dyn_img.height() as f32);
+                // Si la imagen de la credencial es horizontal, la rotamos 90° para encajar verticalmente
+                let img_to_use = if dyn_img.width() > dyn_img.height() {
+                    dyn_img.rotate90()
+                } else {
+                    dyn_img
+                };
+
+                let (w, h) = (img_to_use.width() as f32, img_to_use.height() as f32);
                 let px_per_mm = 300.0 / 25.4;
                 let mm_w = w / px_per_mm;
                 let mm_h = h / px_per_mm;
-                let pdf_img = Image::from_dynamic_image(&dyn_img);
+                let pdf_img = Image::from_dynamic_image(&img_to_use);
                 pdf_img.add_to_layer(
                     back_layer,
                     ImageTransform {
