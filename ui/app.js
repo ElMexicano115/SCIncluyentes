@@ -1953,7 +1953,78 @@ async function cargarFuenteDejaVu() {
   }
 }
 
-// Hook btn-guardar-perfil listener
+// Auto-updater helper for Tauri v2
+async function comprobarActualizacionesAuto() {
+  if (!window.__TAURI__) return;
+  
+  try {
+    console.log("[Updater] Comprobando si hay actualizaciones disponibles...");
+    
+    let update = null;
+    if (window.__TAURI__.updater && typeof window.__TAURI__.updater.check === 'function') {
+      update = await window.__TAURI__.updater.check();
+    } else if (window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
+      update = await window.__TAURI__.core.invoke('plugin:updater|check');
+    }
+
+    if (update && (update.available || update.version)) {
+      const versionStr = update.version || 'nueva';
+      console.log(`[Updater] ¡Nueva versión disponible!: ${versionStr}`);
+      mostrarBannerActualizacion(`🔄 Nueva versión v${versionStr} encontrada. Descargando actualización...`);
+      
+      if (typeof update.downloadAndInstall === 'function') {
+        await update.downloadAndInstall();
+      } else {
+        await window.__TAURI__.core.invoke('plugin:updater|download_and_install');
+      }
+
+      mostrarBannerActualizacion(`✨ Actualización instalada. Reiniciando aplicación...`);
+      
+      setTimeout(async () => {
+        if (window.__TAURI__.process && typeof window.__TAURI__.process.relaunch === 'function') {
+          await window.__TAURI__.process.relaunch();
+        } else {
+          await window.__TAURI__.core.invoke('plugin:process|restart');
+        }
+      }, 1500);
+    } else {
+      console.log("[Updater] La aplicación está ejecutando la versión más reciente.");
+    }
+  } catch (err) {
+    console.warn("[Updater] Nota: No se pudo verificar la actualización:", err);
+  }
+}
+
+function mostrarBannerActualizacion(mensaje) {
+  let banner = document.getElementById('updater-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'updater-banner';
+    banner.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #0f172a;
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(8px);
+      font-family: 'Inter', sans-serif;
+    `;
+    document.body.appendChild(banner);
+  }
+  banner.innerHTML = `<i class="fa-solid fa-sync fa-spin"></i> <span>${mensaje}</span>`;
+}
+
+// Hook btn-guardar-perfil listener y actualización automática al arrancar
 document.addEventListener('DOMContentLoaded', () => {
   const btnSave = document.getElementById('btn-guardar-perfil');
   if (btnSave) {
@@ -1961,4 +2032,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   cargarFuenteDejaVu();
   setTimeout(cargarPerfilesImpresion, 100);
+  setTimeout(comprobarActualizacionesAuto, 1500);
 });
+
