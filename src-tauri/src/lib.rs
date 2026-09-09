@@ -240,12 +240,14 @@ async fn cmd_check_and_auto_update(app: tauri::AppHandle) -> Result<Option<Strin
                 .await
                 .map_err(|e| format!("Error al descargar/instalar: {}", e))?;
 
-            println!("[DEBUG Rust Updater] Instalación finalizada. Programando reinicio...");
-            let app_handle = app.clone();
-            tauri::async_runtime::spawn(async move {
-                std::thread::sleep(std::time::Duration::from_millis(1000));
-                app_handle.restart();
-            });
+            println!("[DEBUG Rust Updater] Instalación completada.");
+            #[cfg(not(target_os = "windows"))]
+            {
+                let app_handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    app_handle.restart();
+                });
+            }
             Ok(Some(new_ver))
         }
         Ok(None) => {
