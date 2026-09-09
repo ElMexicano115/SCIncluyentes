@@ -217,6 +217,48 @@ async fn cmd_get_photo_base64(folder: String, photo_id: String) -> Result<Option
     Ok(None)
 }
 
+#[tauri::command]
+async fn cmd_check_and_auto_update(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_updater::UpdaterExt;
+
+    println!("[DEBUG Rust Updater] Buscando actualizaciones...");
+    let updater = match app.updater() {
+        Ok(u) => u,
+        Err(err) => {
+            println!("[DEBUG Rust Updater] Error obteniendo updater: {}", err);
+            return Err(err.to_string());
+        }
+    };
+
+    match updater.check().await {
+        Ok(Some(update)) => {
+            let new_ver = update.version.clone();
+            println!("[DEBUG Rust Updater] ¡Nueva versión disponible: v{}! Descargando e instalando...", new_ver);
+
+            update
+                .download_and_install(|_chunk, _total| {}, || {})
+                .await
+                .map_err(|e| format!("Error al descargar/instalar: {}", e))?;
+
+            println!("[DEBUG Rust Updater] Instalación finalizada. Programando reinicio...");
+            let app_handle = app.clone();
+            tauri::async_runtime::spawn(async move {
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+                app_handle.restart();
+            });
+            Ok(Some(new_ver))
+        }
+        Ok(None) => {
+            println!("[DEBUG Rust Updater] La app está en la versión más reciente.");
+            Ok(None)
+        }
+        Err(err) => {
+            println!("[DEBUG Rust Updater] Error verificando actualización: {}", err);
+            Err(err.to_string())
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     println!("[DEBUG Rust] Inicializando aplicación SCIncluyentes en Rust...");
@@ -243,6 +285,7 @@ pub fn run() {
             cmd_delete_profile,
             cmd_generate_qr_preview,
             cmd_get_photo_base64,
+            cmd_check_and_auto_update,
         ])
         .run(tauri::generate_context!())
         .expect("Error al ejecutar la aplicación Tauri");

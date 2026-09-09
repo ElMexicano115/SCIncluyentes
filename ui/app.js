@@ -1959,34 +1959,11 @@ async function comprobarActualizacionesAuto() {
   
   try {
     console.log("[Updater] Comprobando si hay actualizaciones disponibles...");
+    const resultVersion = await invoke('cmd_check_and_auto_update');
     
-    let update = null;
-    if (window.__TAURI__.updater && typeof window.__TAURI__.updater.check === 'function') {
-      update = await window.__TAURI__.updater.check();
-    } else if (window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
-      update = await window.__TAURI__.core.invoke('plugin:updater|check');
-    }
-
-    if (update && (update.available || update.version)) {
-      const versionStr = update.version || 'nueva';
-      console.log(`[Updater] ¡Nueva versión disponible!: ${versionStr}`);
-      mostrarBannerActualizacion(`🔄 Nueva versión v${versionStr} encontrada. Descargando actualización...`);
-      
-      if (typeof update.downloadAndInstall === 'function') {
-        await update.downloadAndInstall();
-      } else {
-        await window.__TAURI__.core.invoke('plugin:updater|download_and_install');
-      }
-
-      mostrarBannerActualizacion(`✨ Actualización instalada. Reiniciando aplicación...`);
-      
-      setTimeout(async () => {
-        if (window.__TAURI__.process && typeof window.__TAURI__.process.relaunch === 'function') {
-          await window.__TAURI__.process.relaunch();
-        } else {
-          await window.__TAURI__.core.invoke('plugin:process|restart');
-        }
-      }, 1500);
+    if (resultVersion) {
+      console.log(`[Updater] ¡Nueva versión v${resultVersion} instalada! Reiniciando...`);
+      mostrarBannerActualizacion(`✨ Actualización v${resultVersion} instalada. Reiniciando aplicación...`);
     } else {
       console.log("[Updater] La aplicación está ejecutando la versión más reciente.");
     }
