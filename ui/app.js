@@ -2024,6 +2024,26 @@ function mostrarBannerActualizacion(mensaje) {
   banner.innerHTML = `<i class="fa-solid fa-sync fa-spin"></i> <span>${mensaje}</span>`;
 }
 
+async function actualizarVersionFooter() {
+  if (!window.__TAURI__) return;
+  try {
+    let ver = null;
+    if (window.__TAURI__.app && typeof window.__TAURI__.app.getVersion === 'function') {
+      ver = await window.__TAURI__.app.getVersion();
+    } else if (window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
+      ver = await window.__TAURI__.core.invoke('plugin:app|version');
+    }
+    if (ver) {
+      const lbl = document.getElementById('app-version-label');
+      if (lbl) {
+        lbl.textContent = `Sistema de Credenciales Incluyentes v${ver}`;
+      }
+    }
+  } catch (e) {
+    // Fallback al valor del HTML
+  }
+}
+
 // Hook btn-guardar-perfil listener y actualización automática al arrancar
 document.addEventListener('DOMContentLoaded', () => {
   const btnSave = document.getElementById('btn-guardar-perfil');
@@ -2032,6 +2052,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   cargarFuenteDejaVu();
   setTimeout(cargarPerfilesImpresion, 100);
+  setTimeout(actualizarVersionFooter, 200);
   setTimeout(comprobarActualizacionesAuto, 1500);
 });
+
 
