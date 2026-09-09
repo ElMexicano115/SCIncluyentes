@@ -58,6 +58,8 @@ pub struct PhotoArea {
     pub foto_especifica: Option<String>,
     #[serde(default)]
     pub es_especifica: Option<bool>,
+    #[serde(default)]
+    pub por_detras: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

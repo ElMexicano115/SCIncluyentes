@@ -91,40 +91,11 @@ pub fn render_single_card(
     let target_w = config.width_px;
     let target_h = config.height_px;
 
-    // 1. Load or create front background image
-    let mut front_img = match &state.archivo_delantero {
-        Some(path) if Path::new(path).exists() => {
-            let loaded = image::open(path).map_err(|e| format!("Error abriendo frontal: {}", e))?;
-            if loaded.dimensions() != (target_w, target_h) {
-                loaded.resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3)
-            } else {
-                loaded
-            }
-        }
-        _ => {
-            let bg: RgbImage = ImageBuffer::from_pixel(target_w, target_h, Rgb([255, 255, 255]));
-            DynamicImage::ImageRgb8(bg)
-        }
-    };
+    // 1. Create base RGBA white canvas for front and back
+    let mut front_canvas = DynamicImage::ImageRgba8(ImageBuffer::from_pixel(target_w, target_h, Rgba([255, 255, 255, 255])));
+    let mut back_canvas = DynamicImage::ImageRgba8(ImageBuffer::from_pixel(target_w, target_h, Rgba([255, 255, 255, 255])));
 
-    // 2. Load or create back background image
-    let mut back_img = match &state.archivo_trasero {
-        Some(path) if Path::new(path).exists() => {
-            let loaded = image::open(path).map_err(|e| format!("Error abriendo trasero: {}", e))?;
-            if loaded.dimensions() != (target_w, target_h) {
-                loaded.resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3)
-            } else {
-                loaded
-            }
-        }
-        _ => {
-            let bg: RgbImage = ImageBuffer::from_pixel(target_w, target_h, Rgb([255, 255, 255]));
-            DynamicImage::ImageRgb8(bg)
-        }
-    };
-
-    // 3. Paste photo areas
-    for area in &state.posiciones_fotos {
+    let render_photo = |area: &crate::models::PhotoArea| -> Option<(DynamicImage, u32, u32, String)> {
         let photo_path: Option<PathBuf> = if area.es_especifica.unwrap_or(false) && area.foto_especifica.is_some() {
             area.foto_especifica.as_ref().map(PathBuf::from)
         } else {
@@ -152,11 +123,61 @@ pub fn render_single_card(
         if let Some(path) = photo_path {
             if let Ok(photo) = image::open(&path) {
                 let resized = photo.resize_exact(area.width, area.height, image::imageops::FilterType::Lanczos3);
-                let target = if area.cara == "delantero" { &mut front_img } else { &mut back_img };
-                image::imageops::overlay(target, &resized, area.x as i64, area.y as i64);
+                return Some((resized, area.x, area.y, area.cara.clone()));
+            }
+        }
+        None
+    };
+
+    // 2. Layer 1: Draw photos configured with por_detras == Some(true)
+    for area in &state.posiciones_fotos {
+        if area.por_detras == Some(true) {
+            if let Some((img, x, y, cara)) = render_photo(area) {
+                let target = if cara == "delantero" { &mut front_canvas } else { &mut back_canvas };
+                image::imageops::overlay(target, &img, x as i64, y as i64);
             }
         }
     }
+
+    // 3. Layer 2: Overlay background template image (front & back)
+    if let Some(path) = &state.archivo_delantero {
+        if Path::new(path).exists() {
+            if let Ok(loaded) = image::open(path) {
+                let resized = if loaded.dimensions() != (target_w, target_h) {
+                    loaded.resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3)
+                } else {
+                    loaded
+                };
+                image::imageops::overlay(&mut front_canvas, &resized, 0, 0);
+            }
+        }
+    }
+
+    if let Some(path) = &state.archivo_trasero {
+        if Path::new(path).exists() {
+            if let Ok(loaded) = image::open(path) {
+                let resized = if loaded.dimensions() != (target_w, target_h) {
+                    loaded.resize_exact(target_w, target_h, image::imageops::FilterType::Lanczos3)
+                } else {
+                    loaded
+                };
+                image::imageops::overlay(&mut back_canvas, &resized, 0, 0);
+            }
+        }
+    }
+
+    // 4. Layer 3: Draw photos configured with por_detras != Some(true) (in front of background)
+    for area in &state.posiciones_fotos {
+        if area.por_detras != Some(true) {
+            if let Some((img, x, y, cara)) = render_photo(area) {
+                let target = if cara == "delantero" { &mut front_canvas } else { &mut back_canvas };
+                image::imageops::overlay(target, &img, x as i64, y as i64);
+            }
+        }
+    }
+
+    let mut front_img = front_canvas;
+    let mut back_img = back_canvas;
 
     // 4. Paste QR areas
     for qr_cfg in &state.qr_areas {

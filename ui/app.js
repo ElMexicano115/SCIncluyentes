@@ -870,22 +870,25 @@ function setupCanvas() {
   });
 }
 
-function drawCanvasOverlay(ctx) {
+function drawCanvasOverlay(ctx, filterBehind = null) {
   ctx.save();
 
   // Draw photos
   (Array.isArray(state.posiciones_fotos) ? state.posiciones_fotos : []).forEach(photo => {
     if (photo.cara === state.caraActiva) {
-      ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
-      ctx.strokeStyle = '#3b82f6';
+      const isBehind = !!photo.por_detras;
+      if (filterBehind !== null && isBehind !== filterBehind) return;
+
+      ctx.fillStyle = isBehind ? 'rgba(139, 92, 246, 0.2)' : 'rgba(59, 130, 246, 0.15)';
+      ctx.strokeStyle = isBehind ? '#8b5cf6' : '#3b82f6';
       ctx.lineWidth = 2;
       ctx.fillRect(photo.x, photo.y, photo.width, photo.height);
       ctx.strokeRect(photo.x, photo.y, photo.width, photo.height);
 
-      ctx.fillStyle = '#3b82f6';
+      ctx.fillStyle = isBehind ? '#8b5cf6' : '#3b82f6';
       ctx.font = '14px Inter, sans-serif';
       ctx.textBaseline = 'top';
-      const label = photo.es_especifica ? '[Foto Específica]' : `[Foto: ${photo.campo_id}]`;
+      const label = (photo.es_especifica ? '[Foto Específica]' : `[Foto: ${photo.campo_id}]`) + (isBehind ? ' (Detrás)' : '');
       ctx.fillText(label, photo.x + 8, photo.y + 8);
 
       if (state.elementoSeleccionado && state.elementoSeleccionado.id === photo.id) {
@@ -893,6 +896,12 @@ function drawCanvasOverlay(ctx) {
       }
     }
   });
+
+  // If rendering behind layer only, skip QRs and Text fields
+  if (filterBehind === true) {
+    ctx.restore();
+    return;
+  }
 
   // Draw QRs
   (Array.isArray(state.qr_areas) ? state.qr_areas : []).forEach(qr => {
@@ -998,10 +1007,14 @@ function renderCanvas(updateForm = true) {
   if (cvs.width !== state.config.width_px) cvs.width = state.config.width_px;
   if (cvs.height !== state.config.height_px) cvs.height = state.config.height_px;
 
-  // Background
+  // 1. Clear white background
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, cvs.width, cvs.height);
 
+  // 2. Layer 1: Draw photos positioned behind background
+  drawCanvasOverlay(ctx, true);
+
+  // 3. Layer 2: Draw background template image
   const bgPath = state.caraActiva === 'delantero' ? state.archivo_delantero : state.archivo_trasero;
   const bgImg = state.caraActiva === 'delantero' ? bgImageCache.delanteroImg : bgImageCache.traseroImg;
 
@@ -1015,8 +1028,8 @@ function renderCanvas(updateForm = true) {
     }
   }
 
-  // Draw overlay items
-  drawCanvasOverlay(ctx);
+  // 4. Layer 3: Draw front elements (front photos, QRs, text fields)
+  drawCanvasOverlay(ctx, false);
   updateCanvasInfoText();
 
   if (updateForm) {
@@ -1149,6 +1162,13 @@ function renderPropertiesForm() {
         ${p.es_especifica ? `<strong>Modo:</strong> Foto Específica<br><span style="word-break:break-all;">${p.foto_especifica || 'Sin archivo seleccionado'}</span>` : `<strong>Modo:</strong> Masivo (Excel)<br><strong>Columna:</strong> ${p.campo_id}<br><strong>Carpeta:</strong> ${p.carpeta_fotos}`}
       </div>
 
+      <div class="form-group">
+        <label>Capa / Posición:</label>
+        <select onchange="actualizarPropiedadFoto('${id}', 'por_detras', this.value === 'true')">
+          <option value="false" ${!p.por_detras ? 'selected' : ''}>Al Frente (Por delante del fondo)</option>
+          <option value="true" ${p.por_detras ? 'selected' : ''}>Por Detrás del Fondo (Para marcos transparentes)</option>
+        </select>
+      </div>
       <div class="form-group">
         <label>Ancho (px):</label>
         <input type="number" value="${p.width}" oninput="actualizarPropiedadFoto('${id}', 'width', parseInt(this.value, 10))" />
@@ -1483,23 +1503,11 @@ window.renderPreviewCanvasTab5 = async function() {
   cvs.width = state.config.width_px;
   cvs.height = state.config.height_px;
 
-  // Background
+  // 1. Clear white background
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, cvs.width, cvs.height);
 
   const cara = state.caraActivaTab5 || 'delantero';
-  const bgPath = cara === 'delantero' ? state.archivo_delantero : state.archivo_trasero;
-  const bgImg = cara === 'delantero' ? bgImageCache.delanteroImg : bgImageCache.traseroImg;
-
-  if (bgPath) {
-    const cachedPath = cara === 'delantero' ? bgImageCache.delanteroPath : bgImageCache.traseroPath;
-    if (cachedPath !== bgPath) {
-      preloadBackgroundImage(cara, bgPath);
-    }
-    if (bgImg && bgImg.complete && bgImg.naturalWidth !== 0) {
-      ctx.drawImage(bgImg, 0, 0, cvs.width, cvs.height);
-    }
-  }
 
   // Determine current selected row data
   let rowData = {};
@@ -1516,46 +1524,71 @@ window.renderPreviewCanvasTab5 = async function() {
     }
   }
 
-  // 1. Draw Photos (Real photos if available; do not draw fallback placeholders in Tab 5 real preview)
+  // Helper to draw photos
   const photos = Array.isArray(state.posiciones_fotos) ? state.posiciones_fotos : [];
-  for (const photo of photos) {
-    if (photo.cara === cara) {
-      let photoSrc = null;
-      if (photo.es_especifica && photo.foto_especifica) {
-        photoSrc = await getDisplaySrc(photo.foto_especifica);
-      } else {
-        const photoId = state.mapeo_campos[photo.campo_id] ? rowData[state.mapeo_campos[photo.campo_id]] : (rowData[photo.campo_id] || rowData['id'] || rowData['ID'] || '');
-        if (photoId && photo.carpeta_fotos) {
-          const cacheKey = `${photo.carpeta_fotos}___${photoId}`;
-          if (previewItemCache.photos[cacheKey]) {
-            photoSrc = previewItemCache.photos[cacheKey];
-          } else {
-            try {
-              const base64 = await invoke('cmd_get_photo_base64', { folder: photo.carpeta_fotos, photoId: photoId.toString() });
-              if (base64) {
-                previewItemCache.photos[cacheKey] = base64;
-                photoSrc = base64;
+  const drawTab5Photos = async (renderBehindOnly) => {
+    for (const photo of photos) {
+      if (photo.cara === cara) {
+        const isBehind = !!photo.por_detras;
+        if (isBehind !== renderBehindOnly) continue;
+
+        let photoSrc = null;
+        if (photo.es_especifica && photo.foto_especifica) {
+          photoSrc = await getDisplaySrc(photo.foto_especifica);
+        } else {
+          const photoId = state.mapeo_campos[photo.campo_id] ? rowData[state.mapeo_campos[photo.campo_id]] : (rowData[photo.campo_id] || rowData['id'] || rowData['ID'] || '');
+          if (photoId && photo.carpeta_fotos) {
+            const cacheKey = `${photo.carpeta_fotos}___${photoId}`;
+            if (previewItemCache.photos[cacheKey]) {
+              photoSrc = previewItemCache.photos[cacheKey];
+            } else {
+              try {
+                const base64 = await invoke('cmd_get_photo_base64', { folder: photo.carpeta_fotos, photoId: photoId.toString() });
+                if (base64) {
+                  previewItemCache.photos[cacheKey] = base64;
+                  photoSrc = base64;
+                }
+              } catch (e) {
+                console.warn("Error fetching preview photo:", e);
               }
-            } catch (e) {
-              console.warn("Error fetching preview photo:", e);
             }
           }
         }
-      }
 
-      if (photoSrc) {
-        let pImg = previewItemCache.photos[photoSrc + '_img'];
-        if (!pImg) {
-          pImg = new Image();
-          pImg.src = photoSrc;
-          previewItemCache.photos[photoSrc + '_img'] = pImg;
-          pImg.onload = () => window.renderPreviewCanvasTab5();
-        } else if (pImg.complete && pImg.naturalWidth !== 0) {
-          ctx.drawImage(pImg, photo.x, photo.y, photo.width, photo.height);
+        if (photoSrc) {
+          let pImg = previewItemCache.photos[photoSrc + '_img'];
+          if (!pImg) {
+            pImg = new Image();
+            pImg.src = photoSrc;
+            previewItemCache.photos[photoSrc + '_img'] = pImg;
+            pImg.onload = () => window.renderPreviewCanvasTab5();
+          } else if (pImg.complete && pImg.naturalWidth !== 0) {
+            ctx.drawImage(pImg, photo.x, photo.y, photo.width, photo.height);
+          }
         }
       }
     }
+  };
+
+  // 2. Layer 1: Draw photos behind background
+  await drawTab5Photos(true);
+
+  // 3. Layer 2: Draw Background image
+  const bgPath = cara === 'delantero' ? state.archivo_delantero : state.archivo_trasero;
+  const bgImg = cara === 'delantero' ? bgImageCache.delanteroImg : bgImageCache.traseroImg;
+
+  if (bgPath) {
+    const cachedPath = cara === 'delantero' ? bgImageCache.delanteroPath : bgImageCache.traseroPath;
+    if (cachedPath !== bgPath) {
+      preloadBackgroundImage(cara, bgPath);
+    }
+    if (bgImg && bgImg.complete && bgImg.naturalWidth !== 0) {
+      ctx.drawImage(bgImg, 0, 0, cvs.width, cvs.height);
+    }
   }
+
+  // 4. Layer 3: Draw photos in front of background
+  await drawTab5Photos(false);
 
   // 2. Draw QRs (Real QRs if available; do not draw fallback placeholders in Tab 5 real preview)
   const qrs = Array.isArray(state.qr_areas) ? state.qr_areas : [];
