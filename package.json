@@ -1,6 +1,6 @@
 {
   "name": "sistema-de-credenciales-incluyentes",
-  "version": "0.2.4.1",
+  "version": "0.2.5",
   "private": true,
   "scripts": {
     "tauri": "tauri",
