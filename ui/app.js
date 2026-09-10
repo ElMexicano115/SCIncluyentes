@@ -1091,6 +1091,13 @@ window.eliminarElemento = (tipo, id, event) => {
   renderCanvas(true);
 };
 
+function desplegarPropiedadesCampo() {
+  const section = document.getElementById('section-propiedades-campo');
+  if (section && section.classList.contains('collapsed')) {
+    section.classList.remove('collapsed');
+  }
+}
+
 function renderPropertiesForm() {
   if (!elements.fieldPropertiesForm) return;
 
@@ -1098,6 +1105,8 @@ function renderPropertiesForm() {
     elements.fieldPropertiesForm.innerHTML = '<p class="subtle-text">Selecciona un elemento en el lienzo para editar sus propiedades.</p>';
     return;
   }
+
+  desplegarPropiedadesCampo();
 
   const { tipo, id } = state.elementoSeleccionado;
 
