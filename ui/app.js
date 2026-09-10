@@ -274,7 +274,7 @@ const bgImageCache = {
 };
 
 async function preloadBackgroundImage(cara, path) {
-  if (!path || typeof path !== 'string' || path.startsWith('C:') || path.startsWith('C\\')) return;
+  if (!path || typeof path !== 'string') return;
 
   if (cara === 'delantero') {
     if (bgImageCache.delanteroPath === path && bgImageCache.delanteroImg) return;
@@ -311,11 +311,14 @@ window.seleccionarImagenDelantero = async function() {
     const path = await invoke('cmd_select_image_file');
     if (path && typeof path === 'string') {
       state.archivo_delantero = path;
+      bgImageCache.delanteroPath = null;
+      bgImageCache.delanteroImg = null;
       const displaySrc = await getDisplaySrc(path);
       elements.previewDelanteroBox.innerHTML = `<img src="${displaySrc}" alt="Fondo Delantero" />`;
       await preloadBackgroundImage('delantero', path);
       renderCanvas(true);
       autoAjustarYCentrarContenido(false);
+      renderPreviewCanvasTab5();
     }
   } catch (err) {
     console.error("[DEBUG JS Error] Error al seleccionar imagen delantera:", err);
@@ -327,11 +330,14 @@ window.seleccionarImagenTrasero = async function() {
     const path = await invoke('cmd_select_image_file');
     if (path && typeof path === 'string') {
       state.archivo_trasero = path;
+      bgImageCache.traseroPath = null;
+      bgImageCache.traseroImg = null;
       const displaySrc = await getDisplaySrc(path);
       elements.previewTraseroBox.innerHTML = `<img src="${displaySrc}" alt="Fondo Trasero" />`;
       await preloadBackgroundImage('trasero', path);
       renderCanvas(true);
       autoAjustarYCentrarContenido(false);
+      renderPreviewCanvasTab5();
     }
   } catch (err) {
     console.error("[DEBUG JS Error] Error al seleccionar imagen trasera:", err);
@@ -341,7 +347,9 @@ window.seleccionarImagenTrasero = async function() {
 function setupConfigListeners() {
   elements.tamanoMmSelect.addEventListener('change', calcularResolucion);
   elements.dpiSelect.addEventListener('change', calcularResolucion);
-  elements.orientacionRadios.forEach(r => r.addEventListener('change', calcularResolucion));
+  if (elements.orientacionRadios) {
+    elements.orientacionRadios.forEach(r => r.addEventListener('change', calcularResolucion));
+  }
 
   elements.btnCrearBlanco.addEventListener('click', async () => {
     const color = elements.blankColorInput.value;
@@ -365,11 +373,21 @@ function setupConfigListeners() {
       state.archivo_delantero = pathDelantero;
       state.archivo_trasero = pathTrasero;
 
+      bgImageCache.delanteroPath = null;
+      bgImageCache.delanteroImg = null;
+      bgImageCache.traseroPath = null;
+      bgImageCache.traseroImg = null;
+
       elements.previewDelanteroBox.innerHTML = `<div style="background:${color}; width:100%; height:100%;">Plantilla Blanco</div>`;
       elements.previewTraseroBox.innerHTML = `<div style="background:${color}; width:100%; height:100%;">Plantilla Blanco</div>`;
 
+      await preloadBackgroundImage('delantero', pathDelantero);
+      await preloadBackgroundImage('trasero', pathTrasero);
+
       elements.footerStatus.textContent = "Plantillas en blanco creadas con éxito";
-      renderCanvas();
+      renderCanvas(true);
+      autoAjustarYCentrarContenido(false);
+      renderPreviewCanvasTab5();
     } catch (err) {
       alert(`Error: ${err}`);
       elements.footerStatus.textContent = "Error al crear plantillas";
@@ -1930,8 +1948,11 @@ window.cargarPerfilConfig = function(jsonEscaped) {
 
     if (cfg.config) state.config = cfg.config;
 
-    if (cfg.archivo_delantero && typeof cfg.archivo_delantero === 'string' && !cfg.archivo_delantero.startsWith('C:') && !cfg.archivo_delantero.startsWith('C\\')) {
+    if (cfg.archivo_delantero && typeof cfg.archivo_delantero === 'string') {
       state.archivo_delantero = cfg.archivo_delantero;
+      bgImageCache.delanteroPath = null;
+      bgImageCache.delanteroImg = null;
+      preloadBackgroundImage('delantero', cfg.archivo_delantero);
       getDisplaySrc(cfg.archivo_delantero).then(src => {
         if (elements.previewDelanteroBox && src) {
           elements.previewDelanteroBox.innerHTML = `<img src="${src}" alt="Delantero" />`;
@@ -1939,8 +1960,11 @@ window.cargarPerfilConfig = function(jsonEscaped) {
       });
     }
 
-    if (cfg.archivo_trasero && typeof cfg.archivo_trasero === 'string' && !cfg.archivo_trasero.startsWith('C:') && !cfg.archivo_trasero.startsWith('C\\')) {
+    if (cfg.archivo_trasero && typeof cfg.archivo_trasero === 'string') {
       state.archivo_trasero = cfg.archivo_trasero;
+      bgImageCache.traseroPath = null;
+      bgImageCache.traseroImg = null;
+      preloadBackgroundImage('trasero', cfg.archivo_trasero);
       getDisplaySrc(cfg.archivo_trasero).then(src => {
         if (elements.previewTraseroBox && src) {
           elements.previewTraseroBox.innerHTML = `<img src="${src}" alt="Trasero" />`;
